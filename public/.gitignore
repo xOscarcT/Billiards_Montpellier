@@ -1,0 +1,6 @@
+*.log
+.DS_Store
+.env
+server/vendor/
+server/composer.lock
+server/contact_log.txt

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "juan_perez",
+    "nombre": "Juan Pérez",
+    "texto": "Campeón local 2024 - Especialista en carambola",
+    "puesto": 1
+  },
+  {
+    "id": "maria_garcia",
+    "nombre": "María García",
+    "texto": "Subcampeona regional - Maestra de la bola 8",
+    "puesto": 2
+  },
+  {
+    "id": "carlos_rodriguez",
+    "nombre": "Carlos Rodríguez",
+    "texto": "Tercer lugar nacional - Experto en bola 9",
+    "puesto": 3
+  },
+  {
+    "id": "roberto_sanchez",
+    "nombre": "Roberto Sánchez",
+    "texto": "Jugador veterano - 25 años de experiencia",
+    "puesto": 4
+  },
+  {
+    "id": "lucia_martinez",
+    "nombre": "Lucía Martínez",
+    "texto": "Promesa juvenil - Ganadora torneo sub-25",
+    "puesto": 5
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "torneos": [
+    {
+      "id": "torneo_abril",
+      "nombre": "Torneo de Abril",
+      "descripcion": "El torneo mensual con premios para los 3 primeros puestos."
+    }
+  ],
+  "fechas_especiales": [
+    {
+      "id": "noche_musical",
+      "nombre": "Noche Musical",
+      "descripcion": "Música en vivo y promociones en bebidas."
+    }
+  ],
+  "publicaciones": []
+}

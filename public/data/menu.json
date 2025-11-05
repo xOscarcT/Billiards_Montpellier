@@ -1,0 +1,20 @@
+{
+  "bebidas": [
+    { "id": "cerveza_clasica", "nombre": "Cerveza clásica"},
+    { "id": "gaseosa", "nombre": "Gaseosa" },
+    { "id": "agua_mineral", "nombre": "Agua mineral" }
+  ],
+  "comidas": [
+    { "id": "hamburguesa_clasica", "nombre": "Hamburguesa clásica" },
+    { "id": "papas_fritas", "nombre": "Papas fritas" }
+  ],
+  "licores": [
+    { "id": "whisky_deluxe", "nombre": "Whisky Deluxe" }
+  ],
+  "snacks": [
+    { "id": "mani_tostado", "nombre": "Maní tostado" }
+  ],
+  "promos": [
+    { "id": "promo_viernes_2x1", "nombre": "Promo Viernes 2x1" }
+  ]
+}
