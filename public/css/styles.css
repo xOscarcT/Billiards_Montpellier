@@ -346,30 +346,36 @@ body {
 }
 
 .filter-btn {
-    padding: 0.75rem 1.5rem;
-    border: 2px solid var(--color-black);
-    background-color: var(--color-white);
-    color: var(--color-black);
-    cursor: pointer;
-    border-radius: 25px;
-    font-weight: 600;
-    transition: var(--transition-smooth);
+  align-items: center;
+  background-color: transparent;
+  color: black;
+  cursor: pointer;
+  display: flex;
+  font-family: ui-sans-serif,system-ui,-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-decoration: none;
+  text-transform: uppercase;
+  outline: 0;
+  border: 0;
+  padding: 1rem;
 }
 
-.filter-btn:hover,
-.filter-btn:focus {
-    background-color: var(--color-black);
-    color: var(--color-white);
-    outline: 2px solid var(--color-red);
-    outline-offset: 2px;
+.filter-btn:before {
+  background-color: var(--color-gray-dark);
+  content: "";
+  display: inline-block;
+  height: 1px;
+  margin-right: 10px;
+  transition: all .42s cubic-bezier(.25,.8,.25,1);
+  width: 0;
 }
 
-.filter-btn.active {
-    background-color: var(--color-red);
-    border-color: var(--color-red);
-    color: var(--color-white);
+.filter-btn:hover:before {
+  background-color: var(--color-gray-medium);
+  width: 3rem;
 }
-
 .gallery-masonry {
     columns: 3;
     column-gap: 1.5rem;
@@ -574,7 +580,7 @@ body {
 .btn {
     padding: 1rem 2rem;
     border: none;
-    border-radius: 5px;
+    border-radius: 20px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -584,15 +590,21 @@ body {
 .btn-primary {
     background-color: var(--color-red);
     color: var(--color-white);
+    width: 60%;
+    align-self: center;
+    /* Glassy, colored button */
+    background: linear-gradient(135deg, rgba(230,57,70,0.8), rgba(255,214,10,0.8));
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
     background-color: #d62828;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(230, 57, 70, 0.3);
-    outline: 2px solid var(--color-yellow);
-    outline-offset: 2px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
 }
 
 .form-message {
