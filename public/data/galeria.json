@@ -1,0 +1,18 @@
+{
+  "instalaciones": [
+    "sala_principal.jpg",
+    "area_lounge.jpg"
+  ],
+  "barra": [
+    "barra_principal.jpg",
+    "servicio_barra.jpg"
+  ],
+  "mesas": [
+    "mesa_profesional.jpg",
+    "vista_mesas.jpg"
+  ],
+  "torneos": [
+    "ceremonia_ganadores.jpg",
+    "accion_torneo.jpg"
+  ]
+}

@@ -28,10 +28,10 @@ const imageExists = (url, callback) => {
 const createPlayerCard = (player) => {
     const card = document.createElement('div');
     card.className = 'player-card';
-    
+
     let badgeClass = 'rank';
     let badgeText = player.puesto;
-    
+
     if (player.puesto === 1) {
         badgeClass = 'gold';
         badgeText = '🥇';
@@ -42,18 +42,42 @@ const createPlayerCard = (player) => {
         badgeClass = 'bronze';
         badgeText = '🥉';
     }
-    
+
     const imagePath = getImagePath('jugadores', null, player.id);
-    
-    card.innerHTML = `
-        <img src="${imagePath}" alt="${player.nombre}" loading="lazy" decoding="async" onerror="this.src='public/placeholder.jpg'">
-        <div class="player-badge ${badgeClass}">${badgeText}</div>
-        <div class="player-info">
-            <h3 class="player-name">${player.nombre}</h3>
-            <p class="player-text">${player.texto}</p>
-        </div>
-    `;
-    
+
+    // Build elements programmatically so we can verify the image exists before setting src
+    const img = document.createElement('img');
+    img.alt = `${player.nombre} - ${player.texto}`;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+
+    // Use imageExists to validate the image before assigning it
+    imageExists(imagePath, (exists) => {
+        img.src = exists ? imagePath : './img/placeholder.jpg';
+    });
+
+    const badge = document.createElement('div');
+    badge.className = `player-badge ${badgeClass}`;
+    badge.textContent = badgeText;
+
+    const info = document.createElement('div');
+    info.className = 'player-info';
+
+    const nameEl = document.createElement('h3');
+    nameEl.className = 'player-name';
+    nameEl.textContent = player.nombre;
+
+    const textEl = document.createElement('p');
+    textEl.className = 'player-text';
+    textEl.textContent = player.texto;
+
+    info.appendChild(nameEl);
+    info.appendChild(textEl);
+
+    card.appendChild(img);
+    card.appendChild(badge);
+    card.appendChild(info);
+
     return card;
 };
 
@@ -75,42 +99,42 @@ const loadPlayers = async () => {
 };
 
 const loadGallery = async () => {
-    const categories = ['instalaciones', 'barra', 'mesas', 'torneos'];
     const container = document.getElementById('gallery-container');
     container.innerHTML = '';
-    
-    for (const category of categories) {
-        try {
-            const response = await fetch(`./img/galeria/${category}/`);
-            const text = await response.text();
-            
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, 'text/html');
-            const links = doc.querySelectorAll('a');
-            
-            links.forEach(link => {
-                const href = link.getAttribute('href');
-                if (href && (href.endsWith('.jpg') || href.endsWith('.png') || href.endsWith('.jpeg'))) {
-                    const item = document.createElement('div');
-                    item.className = 'gallery-item';
-                    item.dataset.category = category;
-                    
-                    const img = document.createElement('img');
-                    img.src = `./img/galeria/${category}/${href}`;
-                    img.alt = `${category} - ${href}`;
-                    img.loading = 'lazy';
-                    img.decoding = 'async';
-                    
-                    item.appendChild(img);
-                    container.appendChild(item);
-                }
+
+    const timestamp = Date.now();
+    try {
+        const response = await fetch(`./data/galeria.json?v=${timestamp}`);
+        if (!response.ok) throw new Error('Galería JSON no disponible');
+        const gallery = await response.json();
+
+        Object.entries(gallery).forEach(([category, files]) => {
+            if (!Array.isArray(files)) return;
+            files.forEach(file => {
+                const path = `./img/galeria/${category}/${file}`;
+                imageExists(path, (exists) => {
+                    if (exists) {
+                        const item = document.createElement('div');
+                        item.className = 'gallery-item';
+                        item.dataset.category = category;
+
+                        const img = document.createElement('img');
+                        img.alt = `${category} - ${file}`;
+                        img.loading = 'lazy';
+                        img.decoding = 'async';
+                        img.src = path;
+
+                        item.appendChild(img);
+                        container.appendChild(item);
+                    }
+                });
             });
-        } catch (error) {
-            console.log(`Could not load gallery for ${category}`);
-        }
+        });
+    } catch (error) {
+        console.log('No se pudo cargar public/data/galeria.json. Usando fallback.', error);
+        // Fallback: use the filesystem fallback already implemented
+        loadGalleryFromFileSystem();
     }
-    
-    loadGalleryFromFileSystem();
 };
 
 const loadGalleryFromFileSystem = () => {
@@ -121,25 +145,27 @@ const loadGalleryFromFileSystem = () => {
         'mesas': ['mesa_profesional.jpg', 'vista_mesas.jpg'],
         'torneos': ['ceremonia_ganadores.jpg', 'accion_torneo.jpg']
     };
-    
+
     Object.entries(categories).forEach(([category, files]) => {
         files.forEach(file => {
             const item = document.createElement('div');
             item.className = 'gallery-item';
             item.dataset.category = category;
-            
+
             const img = document.createElement('img');
-            img.src = `./img/galeria/${category}/${file}`;
-            img.alt = `${category}`;
+            img.alt = `${category} - ${file}`;
             img.loading = 'lazy';
             img.decoding = 'async';
-            img.onerror = function() {
-                this.style.display = 'none';
-                item.remove();
-            };
-            
-            item.appendChild(img);
-            container.appendChild(item);
+
+            const path = `./img/galeria/${category}/${file}`;
+            imageExists(path, (exists) => {
+                if (exists) {
+                    img.src = path;
+                    item.appendChild(img);
+                    container.appendChild(item);
+                }
+                // if it doesn't exist, simply skip adding this image
+            });
         });
     });
 };
@@ -159,14 +185,25 @@ const filterGallery = (category) => {
 const createMenuItem = (item, category) => {
     const menuItem = document.createElement('div');
     menuItem.className = 'menu-item';
-    
+
     const imagePath = getImagePath('menu', category, item.id);
-    
-    menuItem.innerHTML = `
-        <img src="${imagePath}" alt="${item.nombre}" loading="lazy" decoding="async" onerror="this.src='./placeholder.jpg'">
-        <div class="menu-item-name">${item.nombre}</div>
-    `;
-    
+
+    const img = document.createElement('img');
+    img.alt = `${item.nombre} - ${category}`;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+
+    imageExists(imagePath, (exists) => {
+        img.src = exists ? imagePath : './img/placeholder.jpg';
+    });
+
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'menu-item-name';
+    nameDiv.textContent = item.nombre;
+
+    menuItem.appendChild(img);
+    menuItem.appendChild(nameDiv);
+
     return menuItem;
 };
 
@@ -216,17 +253,35 @@ const loadMenu = async () => {
 const createEventCard = (event) => {
     const card = document.createElement('div');
     card.className = 'event-card';
-    
+
     const imagePath = getImagePath('eventos', null, event.id);
-    
-    card.innerHTML = `
-        <img src="${imagePath}" alt="${event.nombre}" loading="lazy" decoding="async" onerror="this.src='./placeholder.jpg'">
-        <div class="event-content">
-            <h4 class="event-title">${event.nombre}</h4>
-            <p class="event-description">${event.descripcion}</p>
-        </div>
-    `;
-    
+
+    const img = document.createElement('img');
+    img.alt = `${event.nombre} - ${event.descripcion}`;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+
+    imageExists(imagePath, (exists) => {
+        img.src = exists ? imagePath : './img/placeholder.jpg';
+    });
+
+    const content = document.createElement('div');
+    content.className = 'event-content';
+
+    const title = document.createElement('h4');
+    title.className = 'event-title';
+    title.textContent = event.nombre;
+
+    const desc = document.createElement('p');
+    desc.className = 'event-description';
+    desc.textContent = event.descripcion;
+
+    content.appendChild(title);
+    content.appendChild(desc);
+
+    card.appendChild(img);
+    card.appendChild(content);
+
     return card;
 };
 
@@ -282,48 +337,102 @@ const initMap = () => {
 
 const handleContactForm = async (e) => {
     e.preventDefault();
-    
+
     const form = e.target;
-    const formData = new FormData(form);
+    const rawFormData = new FormData(form);
     const messageDiv = document.getElementById('form-message');
-    
-    const nombre = formData.get('nombre');
-    const email = formData.get('email');
-    const telefono = formData.get('telefono');
-    
+
+    // Simple sanitizer and limits
+    const sanitize = (v, max = 500) => String(v || '').trim().slice(0, max);
+
+    const nombre = sanitize(rawFormData.get('nombre'));
+    const email = sanitize(rawFormData.get('email'));
+    const telefono = sanitize(rawFormData.get('telefono'));
+    const comentarios = sanitize(rawFormData.get('comentarios'), 2000);
+
     if (!nombre || !email || !telefono) {
         messageDiv.className = 'form-message error';
         messageDiv.textContent = 'Por favor completa todos los campos obligatorios.';
         return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         messageDiv.className = 'form-message error';
         messageDiv.textContent = 'Por favor ingresa un correo electrónico válido.';
         return;
     }
-    
+
+    // Build a sanitized FormData to send
+    const formData = new FormData();
+    formData.append('nombre', nombre);
+    formData.append('email', email);
+    formData.append('telefono', telefono);
+    formData.append('comentarios', comentarios);
+
+    // disable submit button while sending
+    const submitButton = form.querySelector('[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.dataset.originalText = submitButton.textContent;
+        submitButton.textContent = 'Enviando...';
+    }
+
     try {
         const response = await fetch('/server/contact.php', {
             method: 'POST',
             body: formData
         });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            messageDiv.className = 'form-message success';
-            messageDiv.textContent = '¡Mensaje enviado con éxito! Te contactaremos pronto.';
-            form.reset();
+
+        let result = null;
+
+        if (response.ok) {
+            try {
+                result = await response.json();
+            } catch (parseError) {
+                // If server returned non-JSON but 200, handle gracefully
+                messageDiv.className = 'form-message error';
+                messageDiv.textContent = 'Respuesta inesperada del servidor. Por favor intenta nuevamente más tarde.';
+                console.error('JSON parse error:', parseError);
+                return;
+            }
+
+            if (result && result.success) {
+                messageDiv.className = 'form-message success';
+                messageDiv.textContent = '¡Mensaje enviado con éxito! Te contactaremos pronto.';
+                form.reset();
+            } else {
+                messageDiv.className = 'form-message error';
+                // server message is shown as textContent to avoid XSS
+                messageDiv.textContent = (result && result.message) ? result.message : 'Hubo un error al enviar el mensaje. Por favor intenta nuevamente.';
+            }
         } else {
+            // non-OK status: try to extract error message
+            let errText = 'Error del servidor. Por favor intenta nuevamente más tarde.';
+            try {
+                const errJson = await response.json();
+                if (errJson && errJson.message) errText = errJson.message;
+            } catch (jsonErr) {
+                try {
+                    const txt = await response.text();
+                    if (txt) errText = txt.slice(0, 1000);
+                } catch (tErr) {
+                    // ignore
+                }
+            }
+
             messageDiv.className = 'form-message error';
-            messageDiv.textContent = result.message || 'Hubo un error al enviar el mensaje. Por favor intenta nuevamente.';
+            messageDiv.textContent = errText;
         }
     } catch (error) {
         messageDiv.className = 'form-message error';
         messageDiv.textContent = 'Error de conexión. Por favor intenta nuevamente más tarde.';
         console.error('Form submission error:', error);
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = submitButton.dataset.originalText || 'Enviar';
+        }
     }
 };
 
