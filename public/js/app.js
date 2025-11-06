@@ -8,6 +8,14 @@ const normalizeId = (str) => {
         .replace(/^_|_$/g, '');
 };
 
+// Simple HTML escaper to prevent injection when inserting data from JSON
+const escapeHTML = (str) => {
+    return String(str || '').replace(/[&<>"']/g, (s) => {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return map[s];
+    });
+};
+
 const getImagePath = (type, category, id) => {
     const normalizedId = normalizeId(id);
     const paths = {
@@ -25,58 +33,53 @@ const imageExists = (url, callback) => {
     img.src = url;
 };
 
+const formatPrice = (p) => {
+    if (typeof p === 'number') return `$${p.toFixed(2)}`;
+    return String(p || '');
+};
+
 const createPlayerCard = (player) => {
+    // Wrapper kept for grid layout
     const card = document.createElement('div');
     card.className = 'player-card';
 
-    let badgeClass = 'rank';
-    let badgeText = player.puesto;
-
-    if (player.puesto === 1) {
-        badgeClass = 'gold';
-        badgeText = '🥇';
-    } else if (player.puesto === 2) {
-        badgeClass = 'silver';
-        badgeText = '🥈';
-    } else if (player.puesto === 3) {
-        badgeClass = 'bronze';
-        badgeText = '🥉';
-    }
-
     const imagePath = getImagePath('jugadores', null, player.id);
 
-    // Build elements programmatically so we can verify the image exists before setting src
-    const img = document.createElement('img');
-    img.alt = `${player.nombre} - ${player.texto}`;
-    img.loading = 'lazy';
-    img.decoding = 'async';
+    // Inner card (design provided)
+    const box = document.createElement('div');
+    box.className = 'card_box';
+    box.setAttribute('role', 'img');
+    box.setAttribute('aria-label', `${player.nombre} - ${player.texto}`);
 
-    // Use imageExists to validate the image before assigning it
+    // Badge span: use data-badge so ::before can show it via CSS
+    const badgeSpan = document.createElement('span');
+    badgeSpan.setAttribute('data-badge', `#${player.puesto}`);
+    // add a class so CSS can color badges by puesto
+    let badgeClass = 'badge-default';
+    if (player.puesto === 1) badgeClass = 'badge-1';
+    else if (player.puesto === 2) badgeClass = 'badge-2';
+    else if (player.puesto === 3) badgeClass = 'badge-3';
+    else if (player.puesto === '') badgeClass = 'badge-none';
+    badgeSpan.className = badgeClass;
+
+    // Bottom name area (name + texto). Use escaped content to avoid injection.
+    const nameBox = document.createElement('div');
+    nameBox.className = 'player-name-box';
+    nameBox.innerHTML = `
+        <small class="player-text-small">${escapeHTML(player.texto || '')}</small>
+        <div class="player-name">${escapeHTML(player.nombre)}</div>
+    `;
+
+    // Check image exists then set as background-image; otherwise placeholder
     imageExists(imagePath, (exists) => {
-        img.src = exists ? imagePath : './img/placeholder.jpg';
+        const chosen = exists ? imagePath : './img/placeholder.jpg';
+        // set as background-image on box
+        box.style.backgroundImage = `url('${chosen}')`;
     });
 
-    const badge = document.createElement('div');
-    badge.className = `player-badge ${badgeClass}`;
-    badge.textContent = badgeText;
-
-    const info = document.createElement('div');
-    info.className = 'player-info';
-
-    const nameEl = document.createElement('h3');
-    nameEl.className = 'player-name';
-    nameEl.textContent = player.nombre;
-
-    const textEl = document.createElement('p');
-    textEl.className = 'player-text';
-    textEl.textContent = player.texto;
-
-    info.appendChild(nameEl);
-    info.appendChild(textEl);
-
-    card.appendChild(img);
-    card.appendChild(badge);
-    card.appendChild(info);
+    box.appendChild(badgeSpan);
+    box.appendChild(nameBox);
+    card.appendChild(box);
 
     return card;
 };
@@ -201,6 +204,21 @@ const createMenuItem = (item, category) => {
     nameDiv.className = 'menu-item-name';
     nameDiv.textContent = item.nombre;
 
+    // If item has precio, add a price-tag and give the item a has-price class
+    if (item.precio !== undefined && item.precio !== null && item.precio !== '') {
+        const priceTag = document.createElement('div');
+        priceTag.className = 'price-tag';
+        const precioNum = Number(String(item.precio).replace(/[^0-9.-]/g, ''));
+        if (!Number.isFinite(precioNum)) {
+            priceTag.textContent = String(item.precio);
+        } else {
+            priceTag.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(precioNum);
+        }
+        menuItem.classList.add('has-price');
+        // add price tag before name so it's visible on top/center
+        menuItem.appendChild(priceTag);
+    }
+
     menuItem.appendChild(img);
     menuItem.appendChild(nameDiv);
 
@@ -324,14 +342,14 @@ const loadEvents = async () => {
 };
 
 const initMap = () => {
-    const map = L.map('map').setView([43.6108, 3.8767], 15);
+    const map = L.map('map').setView([4.666294, -74.126159], 16);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
     
-    L.marker([43.6108, 3.8767]).addTo(map)
-        .bindPopup('<b>Billiards Montpellier</b><br>Tu lugar de billar favorito')
+    L.marker([4.666294, -74.126159]).addTo(map)
+        .bindPopup('<b>Billiards Montpellier</b><br>Cra. 82 #22f 45<br><a href="https://maps.app.goo.gl/3KtnuDFH1WYkxrBW9" target="_blank" rel="noopener">Ver en Google Maps</a>')
         .openPopup();
 };
 
