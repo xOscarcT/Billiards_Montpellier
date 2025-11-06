@@ -396,6 +396,15 @@ const handleContactForm = async (e) => {
         submitButton.textContent = 'Enviando...';
     }
 
+    messageDiv.className = 'form-message success';
+    messageDiv.textContent = '¡Característica disponible en la próxima actualización!';
+    form.reset();
+    if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = submitButton.dataset.originalText || 'Enviar';
+    }
+
+    /*                 FUNCION DE ENVIO DE CORREO
     try {
         const response = await fetch('/server/contact.php', {
             method: 'POST',
@@ -452,6 +461,7 @@ const handleContactForm = async (e) => {
             submitButton.textContent = submitButton.dataset.originalText || 'Enviar';
         }
     }
+    */
 };
 
 const initNavigation = () => {
@@ -465,21 +475,19 @@ const initNavigation = () => {
     
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const targetId = link.getAttribute('href');
-            const targetSection = document.querySelector(targetId);
-            
-            if (targetSection) {
-                const navHeight = document.querySelector('.navbar').offsetHeight;
-                const targetPosition = targetSection.offsetTop - navHeight;
-                
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
-                
-                navMenu.classList.remove('active');
+            const href = link.getAttribute('href');
+            // If link is an internal hash (one-page behavior) perform smooth scroll
+            if (href && href.startsWith('#')) {
+                e.preventDefault();
+                const targetSection = document.querySelector(href);
+                if (targetSection) {
+                    const navHeight = document.querySelector('.navbar').offsetHeight;
+                    const targetPosition = targetSection.offsetTop - navHeight;
+                    window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                    navMenu.classList.remove('active');
+                }
             }
+            // otherwise let the browser navigate to the other page
         });
     });
     
@@ -496,11 +504,229 @@ const initNavigation = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadPlayers();
-    loadGallery();
-    loadMenu();
-    loadEvents();
-    initMap();
+    // Load contact data (social links, whatsapps, footer info)
+    const loadContactData = async () => {
+        try {
+            const ts = Date.now();
+            const resp = await fetch(`./data/datos_contacto.json?v=${ts}`);
+            if (!resp.ok) throw new Error('datos_contacto.json no disponible');
+            const data = await resp.json();
+            applyContactData(data);
+        } catch (err) {
+            // silent fallback - leave existing links as-is
+            console.warn('No se pudo cargar datos_contacto.json:', err);
+        }
+    };
+
+    const digitsOnly = (s) => String(s || '').replace(/[^0-9]/g, '');
+
+    const makeWhatsAppUrl = (number, message) => {
+        const digits = digitsOnly(number);
+        let base = `https://wa.me/${digits}`;
+        if (message) base += `?text=${encodeURIComponent(message)}`;
+        return base;
+    };
+
+    const applyContactData = (data) => {
+        if (!data) return;
+
+        // Update footer phone/email placeholders if present
+        const footerPhoneEls = document.querySelectorAll('#footer-phone');
+        footerPhoneEls.forEach(el => {
+            const phone = data.footer && data.footer.phone_display ? data.footer.phone_display : (data.contact_phones && data.contact_phones[0]) || '';
+            el.textContent = phone || '';
+            if (phone) el.setAttribute('href', `tel:${digitsOnly(phone)}`);
+        });
+
+        const footerEmailEls = document.querySelectorAll('#footer-email');
+        footerEmailEls.forEach(el => {
+            const email = data.footer && data.footer.email_display ? data.footer.email_display : (data.contact_emails && data.contact_emails[0]) || '';
+            el.textContent = email || '';
+            if (email) el.setAttribute('href', `mailto:${email}`);
+        });
+
+        // Replace any instagram/facebook anchors found by href pattern
+        if (data.social) {
+            const insta = data.social.instagram;
+            const fb = data.social.facebook;
+            if (insta) {
+                document.querySelectorAll('a[href*="instagram.com"]').forEach(a => a.setAttribute('href', insta));
+                document.querySelectorAll('[data-social="instagram"]').forEach(a => a.setAttribute('href', insta));
+            }
+            if (fb) {
+                document.querySelectorAll('a[href*="facebook.com"]').forEach(a => a.setAttribute('href', fb));
+                document.querySelectorAll('[data-social="facebook"]').forEach(a => a.setAttribute('href', fb));
+            }
+            if (data.social.whatsapp_profile) {
+                document.querySelectorAll('[data-social="whatsapp-profile"]').forEach(a => a.setAttribute('href', data.social.whatsapp_profile));
+            }
+        }
+
+        // Update floating whatsapp button(s)
+        const floatBtn = document.querySelectorAll('.whatsapp-float');
+        if (floatBtn && floatBtn.length > 0) {
+            const chosen = (data.whatsapp_buttons && data.whatsapp_buttons[0]) || null;
+            let url = (data.social && data.social.whatsapp_profile) || '';
+            if (chosen) url = makeWhatsAppUrl(chosen.number, chosen.prefilled_message);
+            floatBtn.forEach(a => {
+                if (url) a.setAttribute('href', url);
+            });
+        }
+
+        // In-contact page: update any socialContainer links created in markup
+        document.querySelectorAll('[data-social]').forEach(a => {
+            const key = a.getAttribute('data-social');
+            if (key === 'instagram' && data.social && data.social.instagram) a.setAttribute('href', data.social.instagram);
+            if (key === 'facebook' && data.social && data.social.facebook) a.setAttribute('href', data.social.facebook);
+            if (key === 'whatsapp-profile' && data.social && data.social.whatsapp_profile) a.setAttribute('href', data.social.whatsapp_profile);
+        });
+
+        // Optional: build a small list of clickable whatsapp quick buttons if an element exists
+        const quickContainer = document.getElementById('whatsapp-quick-buttons');
+        if (quickContainer && Array.isArray(data.whatsapp_buttons)) {
+            quickContainer.innerHTML = '';
+            data.whatsapp_buttons.forEach(btn => {
+                const a = document.createElement('a');
+                a.className = 'whatsapp-quick';
+                a.setAttribute('href', makeWhatsAppUrl(btn.number, btn.prefilled_message));
+                a.setAttribute('target', '_blank');
+                a.setAttribute('rel', 'noopener noreferrer');
+                a.textContent = btn.label || btn.number;
+                quickContainer.appendChild(a);
+            });
+        }
+    };
+
+    // Trigger the load but non-blocking
+    loadContactData();
+
+    // --- SEO helpers: canonical, OG/Twitter meta and JSON-LD LocalBusiness ---
+    const insertMeta = (nameOrProperty, attrValue, content, isProperty = false) => {
+        if (!content) return null;
+        let selector = isProperty ? `meta[property="${nameOrProperty}"]` : `meta[name="${nameOrProperty}"]`;
+        let el = document.head.querySelector(selector);
+        if (!el) {
+            el = document.createElement('meta');
+            if (isProperty) el.setAttribute('property', nameOrProperty);
+            else el.setAttribute('name', nameOrProperty);
+            document.head.appendChild(el);
+        }
+        el.setAttribute('content', content);
+        return el;
+    };
+
+    const ensureCanonical = () => {
+        let link = document.head.querySelector('link[rel="canonical"]');
+        const href = window.location.href.replace(/#.*$/, '');
+        if (!link) {
+            link = document.createElement('link');
+            link.setAttribute('rel', 'canonical');
+            document.head.appendChild(link);
+        }
+        link.setAttribute('href', href);
+    };
+
+    const initSEO = async () => {
+        try {
+            ensureCanonical();
+
+            // prefer existing meta description if present
+            const existingDesc = document.head.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+            let description = existingDesc;
+            if (!description) {
+                // fallback to first section paragraph or title
+                const p = document.querySelector('.section p');
+                if (p && p.textContent.trim()) description = p.textContent.trim().slice(0, 160);
+                else description = document.title || 'Billiards Montpellier - Bar & Club de billar';
+            }
+
+            // OG and Twitter tags
+            const title = document.title || document.querySelector('.section .section-title')?.textContent || 'Billiards Montpellier';
+            insertMeta('og:title', 'property', title, true);
+            insertMeta('og:description', 'property', description, true);
+            insertMeta('twitter:title', 'name', title, false);
+            insertMeta('twitter:description', 'name', description, false);
+            insertMeta('og:type', 'property', 'website', true);
+            insertMeta('twitter:card', 'name', 'summary_large_image', false);
+
+            // og:url and og:image
+            const url = window.location.href.replace(/#.*$/, '');
+            insertMeta('og:url', 'property', url, true);
+
+            // figure out a good image: hero banner or first img on page
+            let image = document.querySelector('.hero-background img')?.src || document.querySelector('img')?.src || './img/hero-banner.jpg';
+            // make it absolute if needed
+            try { image = new URL(image, window.location.href).href; } catch (e) { /* ignore */ }
+            insertMeta('og:image', 'property', image, true);
+            insertMeta('twitter:image', 'name', image, false);
+
+            // structured data (LocalBusiness) using datos_contacto.json when available
+            let contactData = null;
+            try {
+                const resp = await fetch(`./data/datos_contacto.json?v=${Date.now()}`);
+                if (resp.ok) contactData = await resp.json();
+            } catch (e) {
+                // ignore
+            }
+
+            const structured = {
+                '@context': 'https://schema.org',
+                '@type': 'LocalBusiness',
+                'name': 'Billiards Montpellier',
+                'url': window.location.origin + window.location.pathname.replace(/index\.html$/, ''),
+                'description': description,
+                'telephone': (contactData && contactData.contact_phones && contactData.contact_phones[0]) || (contactData && contactData.footer && contactData.footer.phone_display) || '',
+                'email': (contactData && contactData.contact_emails && contactData.contact_emails[0]) || (contactData && contactData.footer && contactData.footer.email_display) || '',
+                'image': image,
+                'address': {
+                    '@type': 'PostalAddress',
+                    'streetAddress': 'Cra. 82 #22f 45',
+                    'addressLocality': '',
+                    'addressRegion': '',
+                    'postalCode': ''
+                }
+            };
+
+            if (contactData && contactData.social) {
+                const sameAs = [];
+                if (contactData.social.instagram) sameAs.push(contactData.social.instagram);
+                if (contactData.social.facebook) sameAs.push(contactData.social.facebook);
+                if (sameAs.length) structured.sameAs = sameAs;
+            }
+
+            // inject JSON-LD
+            let ld = document.head.querySelector('script[type="application/ld+json"][data-generated-by="appjs-seo"]');
+            if (!ld) {
+                ld = document.createElement('script');
+                ld.type = 'application/ld+json';
+                ld.setAttribute('data-generated-by', 'appjs-seo');
+                document.head.appendChild(ld);
+            }
+            ld.textContent = JSON.stringify(structured, null, 2);
+        } catch (e) {
+            console.warn('initSEO failed', e);
+        }
+    };
+
+    // non-blocking
+    initSEO();
+    // Initialize only the pieces needed on the current page (multi-page support)
+    if (document.getElementById('players-container')) {
+        loadPlayers();
+    }
+    if (document.getElementById('gallery-container')) {
+        loadGallery();
+    }
+    if (document.getElementById('menu-container')) {
+        loadMenu();
+    }
+    if (document.getElementById('torneos-container') || document.getElementById('fechas-container') || document.getElementById('publicaciones-container')) {
+        loadEvents();
+    }
+    if (document.getElementById('map')) {
+        initMap();
+    }
+    // Navigation is always initialized (works across pages)
     initNavigation();
     
     const contactForm = document.getElementById('contact-form');
